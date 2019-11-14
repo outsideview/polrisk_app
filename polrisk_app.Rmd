@@ -1,0 +1,1212 @@
+---
+title: PolRisk
+author: by
+output: 
+  flexdashboard::flex_dashboard:
+    logo: logo.svg
+    theme: default
+    css: style.css
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# source('C:/Users/NC/Documents/R/data_collect/epu_data.R')
+Sys.setenv("plotly_username"="ov_nc")
+Sys.setenv("plotly_api_key"="1orLAz9rSv0WHMCutmVZ")
+
+
+# LIBRARIES -----------------------------
+library(shiny)
+library(flexdashboard)
+library(knitr)
+library(dplyr)
+library(plotly)
+library(zoo)
+library(tidyr)
+library(TTR)
+
+rm(list=ls())
+
+# PARAMETERS ----------------------------
+
+# FUNCTIONS -----------------------------
+
+my_plot <- . %>% 
+  plot_ly(x = ~date, y = ~value,name=~paste0(unique(variable))) %>%
+  add_lines(line=list(width=1.5))%>%
+  add_annotations(
+    text = ~paste0("<b>",unique(variable),"</b>"),
+    x = 0.1,
+    y = 0.85,
+    yref = "paper",
+    xref = "paper",
+    xanchor = "left",
+    yanchor = "top",
+    showarrow = FALSE,
+    font = list(size = 13)
+  )%>%
+  layout(title="",
+         xaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=T,zerolinecolor="#eee", showgrid = T),
+         yaxis=list(title="",rangemode="tozero",
+                    showline = T,linecolor="#eee",zeroline=T,zerolinecolor="#eee",showgrid = T,
+                    showticklabels = T),
+         margin = list(l = 15, r = 10, t = 15, b = 0))
+         
+
+my_plot1 <- . %>% 
+  plot_ly(x = ~date, y = ~value,name=~paste0(unique(variable))) %>%
+  add_lines(line=list(color="#4080bf",width=1.5),fill="tozeroy",fillcolor="rgba(64, 128, 191,0.07)")%>%
+  add_annotations(
+    text = ~paste0("<b>",unique(variable),"</b>"),
+    x = 0.1,
+    y = 0.85,
+    yref = "paper",
+    xref = "paper",
+    xanchor = "left",
+    yanchor = "top",
+    showarrow = FALSE,
+    font = list(size = 13)
+  )%>%
+  layout(title="",
+         xaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=T,zerolinecolor="#eee", showgrid = F),
+         yaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=T,zerolinecolor="#eee",showgrid = F,
+                    showticklabels = T),
+         margin = list(l = 20, r = 10, t = 15, b = 0))
+
+
+my_plot2 <- . %>% 
+  plot_ly(x = ~date, y = ~value,name=~paste0(unique(variable))) %>%
+  add_lines(line=list(color="rgb(150,150,150)",width=1.5))%>%
+  add_annotations(
+    text = ~paste0("<b>",unique(variable),"</b>"),
+    x = 0.1,
+    y = 0.85,
+    yref = "paper",
+    xref = "paper",
+    xanchor = "left",
+    yanchor = "top",
+    showarrow = FALSE,
+    font = list(size = 13)
+  )%>%
+  layout(title="",
+         xaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=T,zerolinecolor="#eee", showgrid = F,showticklabels=T),
+         yaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=T,zerolinecolor="#eee",showgrid = F,
+                    showticklabels = F),
+         margin = list(l = 5, r = 5, t = 15, b = 0))
+
+
+
+# UI HELPERS ----------------------------
+color1<-"#3cbcea"
+color2<-"#c8a24d"
+plotly_btr<-list("zoom2d","pan2d","zoomIn2d","zoomOut2d","autoScale2d","toggleHover","resetScale2d",
+                                        "lasso2d","select2d","toggleSpikelines","hoverClosestCartesian","hoverCompareCartesian")
+
+
+# DATA ----------------------------------
+load("C:/Users/NC/Documents/DATA/EPU/epu.Rdata")
+load("C:/Users/NC/Documents/DATA/market/market_data.Rdata")
+epu_m<-epu_m%>%arrange(date)%>%drop_na(date)%>%na.locf()
+
+
+# geopolitics plots -----------------------------
+
+p01<-gpr_main%>%
+  plot_ly(x=~date,y=~gpr,name="GPR Index",type="scatter",mode="lines",
+          line=list(color="#4080bf",width=1.5))%>%
+  add_annotations(text = ~paste0("<b>","Geopolitical<br>Risk Index","</b>"),
+                  x = 0.1,
+                  y = 0.9,
+                  yref = "paper",
+                  xref = "paper",
+                  xanchor = "left",
+                  yanchor = "top",
+                  showarrow = FALSE,
+                  font = list(size = 12))%>%
+  layout(title="",
+         xaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee", showgrid = F),
+         yaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee",showgrid = F,
+                    showticklabels = F),
+         margin = list(l = 5, r = 5, t = 0, b = 0),
+         height=250)%>%
+  config(displayModeBar=F)
+
+
+# WU map plot -------------
+df1<-wui%>%gather(code,wui,2:ncol(wui))%>%group_by(code)%>%filter(year==max(year))
+df1$wui[df1$wui>1]<-1
+
+# light grey boundaries
+l <- list(color = toRGB("grey"), width = 0.5)
+
+# specify map projection/options
+g <- list(
+  showframe = FALSE,
+  showcoastlines = FALSE,
+  projection = list(type = "miller"),
+  lataxis=list(range=list(-50,90)),
+  showocean=F
+)
+
+p23 <- plot_geo(df1) %>%
+  add_trace(
+    z = ~wui, color = ~wui, colors = 'Reds',
+    text = ~code, locations = ~code, marker = list(line = l)
+  ) %>%
+  colorbar(title = "") %>%
+  layout(
+    title = paste0("<b>World Uncertainty Index - ",max(df1$year),"</b>"),
+    margin = list(l = 10, r = 30, t = 50, b = 0),
+    geo = g
+  )
+p02<-p23%>%hide_colorbar()%>%layout(showlegend=FALSE,title="",margin = list(l = 0, r = 0, t = 0, b = 0))%>%
+  layout(height=250)%>%
+  config(displayModeBar = F,
+         modeBarButtonsToRemove=plotly_btr, displaylogo=FALSE,collaborate=FALSE,cloud=FALSE,
+         toImageButtonOptions=list(width=800,height=500,format="png"))
+
+
+
+
+
+
+p03<-epu_m%>%filter(date>"2000-01-01")%>%
+  plot_ly(x=~date,y=~gepu_main,name="Global EPU",type="scatter",mode="lines",
+          line=list(color="#4080bf",width=1.5))%>%
+  add_annotations(text = ~paste0("<b>","Global Economic<br>Policy Uncertainty","</b>"),
+                  x = 0.1,
+                  y = 0.9,
+                  yref = "paper",
+                  xref = "paper",
+                  xanchor = "left",
+                  yanchor = "top",
+                  showarrow = FALSE,
+                  font = list(size = 12))%>%
+  layout(title="",
+         xaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee", showgrid = F),
+         yaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee",showgrid = F,
+                    showticklabels = F),
+         margin = list(l = 5, r = 5, t = 0, b = 0),
+         height=250)%>%
+  config(displayModeBar = F,
+         modeBarButtonsToRemove=plotly_btr, displaylogo=FALSE,collaborate=FALSE,cloud=FALSE,
+         toImageButtonOptions=list(width=800,height=500,format="png"))
+
+
+
+
+```
+
+
+Home {data-icon=fa-home}
+========================================================
+
+## col0 {.sidebar data-width=225}
+```{r echo=FALSE}
+fillCol(
+    # style="border-right:solid 1px #ccc;",
+    div(
+    h3("Political Risk Measured ",style="font-size:25px;color:#3cbcea;font-weight:500;margin-top:20px;"),
+    h4(style="color:white;",
+       "Thanks to data availability and processing techniques, it is possible to analyse the semantic content of newspaper articles and derive various measures of risk and uncertainty based on frequency count of certain words/articles."),
+    h4(style="text-align:justify;margin-top:20px;color:white;",
+       "Several indices based on this principle have been developped, with varying focus or scope.")
+    # br(),
+    # h5(style="color:black;font-weight:300;margin-top:20px;margin-bottom:0;",
+    #    "an app by"),
+    # tags$img(src="logo1.svg",width="50%"),
+    # h4("Outside View is focused on delivering macro data analytics and visualisation")
+
+  )
+  )
+```
+
+
+## Col 1 {data-width=300}
+
+### frame 1 {.no-title}
+```{r echo=FALSE}
+  
+fillRow(
+  flex=c(30,30,30),
+  div(
+    style="margin-left:30px;margin-right:30px",
+    h3("Geopolitical Risk Index (GPR)",style="font-size:25px;color:black;font-weight:500;margin-top:20px;"),
+    h4(style="text-align:justify;",
+       "Measure based on the number of articles refering to geopolitical threats or acts in the archives of 11 US and international newspapers.",
+       tags$a("Go to the GPR section",href="index.html#gpr")),
+    p01
+  ),
+  div(
+    style="margin-left:30px;margin-right:30px",
+    h3("World Uncertainty Index (WUI)",style="font-size:25px;color:black;font-weight:500;margin-top:20px;"),
+    h4(style="text-align:justify;",
+       "A measure based on the frequency of the word uncertainty and its variant in the 
+       Economist Intelligence Unit (EIU) quarterly country reports.",
+       tags$a("Go to World the Uncertainty Map",href="index.html#wui")),
+    # tags$img(src="wui_map.svg",width="100%")
+    p02
+  ),
+  div(
+    style="margin-left:30px;margin-right:30px;",
+    h3("Economic Policy Uncertainty (EPU)",style="font-size:25px;color:black;font-weight:500;margin-top:20px;"),
+    h4(style="text-align:justify;",
+       "Monthly and daily indices based on frequency and text analysis of articles in major international newspaper."),
+    # tags$embed(src="epu.svg",width="100%"),
+    p03,
+    h4("See more:"),
+    tags$li(style="font-size:15px;",
+            tags$a("Economic Policy Uncertainty by country/area",href="index.html#epu")),
+    tags$li(style="font-size:15px;",
+            tags$a("Policy uncertainty by topic (US only)",href="index.html#epu-topics")),
+    tags$li(style="font-size:15px;",
+            tags$a("Equity Market Uncertainty and policy-related volatility",href="index.html#epu-markets"))
+  )
+)
+
+
+
+```
+
+
+
+GPR {data-icon=fa-globe}
+========================================================
+
+## Paramètres {.sidebar data-width=225}
+```{r echo=FALSE}
+
+h3("Geopolitical Risk Index",style="font-size:30px;color:#3cbcea;font-weight:500;")
+
+# date ------------------------
+div(icon("calendar"),style="font-size:25px;color:#3cbcea;padding-right:10px;padding-bottom:0px;padding-top:30px;")
+h4(paste0("Monthly, as of ",as.yearmon(max(gpr_main$date))),style="color:white;")
+
+
+# info ------------------------
+div(icon("info-circle"),style="font-size:25px;color:#3cbcea;padding-right:10px;padding-bottom:3px;padding-top:30px;")
+h5("Index based on automated text-search results in the electronic archives of 11 national and international newspapers, compiling the number of articles refering  to geopolitical threats or acts.",style="color:white;margin-bottom:20px;")
+h5("Source: Measuring Geopolitical Risk, by Dario Caldara and Matteo Iacoviello",style="color:white;margin-bottom:20px;")
+h5("https://www2.bc.edu/matteo-iacoviello/gpr.htm",style="color:white;margin-bottom:20px;")
+
+```
+
+## Col 1 {data-width=300 .tabset}
+
+### Summary
+```{r echo=FALSE}
+p10<-gpr_main%>%
+  plot_ly(x=~date,y=~gpr,name="GPR Index",type="scatter",mode="lines",
+          line=list(color="#4080bf"))%>%
+  add_annotations(text = ~paste0("<b>","Geopolitical<br>Risk Index","</b>"),
+                  x = 0.1,
+                  y = 0.9,
+                  yref = "paper",
+                  xref = "paper",
+                  xanchor = "left",
+                  yanchor = "top",
+                  showarrow = FALSE,
+                  font = list(size = 13))%>%
+  layout(title="",
+         xaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee", showgrid = F),
+         yaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee",showgrid = F,
+                    showticklabels = T),
+         margin = list(l = 20, r = 10, t = 0, b = 20))
+
+p11<-gpr_main%>%
+  plot_ly(x=~date,y=~gpr_threat,name="GPR_Threat",type="scatter",mode="lines",
+          line=list(color="#4080bf"))%>%
+  add_annotations(text = ~paste0("<b>","Geopolitical Threat<br>Sub-Index","</b>"),
+                  x = 0.1,
+                  y = 0.9,
+                  yref = "paper",
+                  xref = "paper",
+                  xanchor = "left",
+                  yanchor = "top",
+                  showarrow = FALSE,
+                  font = list(size = 13))%>%
+  layout(title="",
+         xaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee", showgrid = F),
+         yaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee",showgrid = F,
+                    showticklabels = T),
+         margin = list(l = 20, r = 10, t = 0, b = 20))
+
+p12<-gpr_main%>%
+  plot_ly(x=~date,y=~gpr_act,name="GPR_Act",type="scatter",mode="lines",
+          line=list(color="#4080bf"))%>%
+  add_annotations(text = ~paste0("<b>","Geopolitical Acts<br>Sub-Index","</b>"),
+                  x = 0.1,
+                  y = 0.9,
+                  yref = "paper",
+                  xref = "paper",
+                  xanchor = "left",
+                  yanchor = "top",
+                  showarrow = FALSE,
+                  font = list(size = 13))%>%
+  layout(title="",
+         xaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee", showgrid = F),
+         yaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee",showgrid = F,
+                    showticklabels = T),
+         margin = list(l = 20, r = 10, t = 0, b = 20))
+
+p13<-subplot(p10,p11,p12,nrows=3,heights=c(0.4,0.3,0.3),margin=0.04,shareX = F,titleX = TRUE)%>%
+  layout(showlegend=F,
+         margin = list(l = 40, r = 20, t = 10, b = 20),
+         xaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee", showgrid = F))%>%
+  config(displayModeBar = "hover",
+         modeBarButtonsToRemove=plotly_btr, displaylogo=FALSE,collaborate=FALSE,cloud=FALSE,
+         toImageButtonOptions=list(width=700,height=1100,format="png"))
+
+
+p13
+# orca(p13,"gpr.svg",width=600,height=600)
+
+```
+
+### Historical data
+```{r echo=FALSE}
+p14<-gpr_hist%>%
+  plot_ly(x=~date,y=~gprh,name="GPR Index",type="scatter",mode="lines",
+          line=list(color="#4080bf",width=1.5))%>%
+  add_annotations(text = ~paste0("<b>","Geopolitical<br>Risk Index","</b>"),
+                  x = 0.05,
+                  y = 0.9,
+                  yref = "paper",
+                  xref = "paper",
+                  xanchor = "left",
+                  yanchor = "top",
+                  showarrow = FALSE,
+                  font = list(size = 13))%>%
+  layout(title="",
+         xaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee", showgrid = F),
+         yaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee",showgrid = F,
+                    showticklabels = T),
+         margin = list(l = 20, r = 10, t = 0, b = 20))
+
+p15<-gpr_hist%>%
+  plot_ly(x=~date,y=~gprht,name="GPR_Threat",type="scatter",mode="lines",
+          line=list(color="#4080bf",width=1.5))%>%
+  add_annotations(text = ~paste0("<b>","Geopolitical Threat<br>Sub-Index","</b>"),
+                  x = 0.05,
+                  y = 0.9,
+                  yref = "paper",
+                  xref = "paper",
+                  xanchor = "left",
+                  yanchor = "top",
+                  showarrow = FALSE,
+                  font = list(size = 13))%>%
+  layout(title="",
+         xaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee", showgrid = F),
+         yaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee",showgrid = F,
+                    showticklabels = T),
+         margin = list(l = 20, r = 10, t = 0, b = 20))
+
+p16<-gpr_hist%>%
+  plot_ly(x=~date,y=~gprha,name="GPR_Act",type="scatter",mode="lines",
+          line=list(color="#4080bf",width=1.5))%>%
+  add_annotations(text = ~paste0("<b>","Geopolitical Acts<br>Sub-Index","</b>"),
+                  x = 0.05,
+                  y = 0.9,
+                  yref = "paper",
+                  xref = "paper",
+                  xanchor = "left",
+                  yanchor = "top",
+                  showarrow = FALSE,
+                  font = list(size = 13))%>%
+  layout(title="",
+         xaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee", showgrid = F),
+         yaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee",showgrid = F,
+                    showticklabels = T),
+         margin = list(l = 20, r = 10, t = 0, b = 20))
+
+p17<-subplot(p14,p15,p16,nrows=3,heights=c(0.4,0.3,0.3),margin=0.04,shareX = F,titleX = TRUE)%>%
+  layout(showlegend=F,
+         margin = list(l = 20, r = 20, t = 0, b = 20),
+         xaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee", showgrid = F))%>%
+  config(displayModeBar = "hover",
+         modeBarButtonsToRemove=plotly_btr, displaylogo=FALSE,collaborate=FALSE,cloud=FALSE,
+         toImageButtonOptions=list(width=700,height=1100,format="png"))
+p17
+
+```
+
+
+
+## Col 2 {data-width=150, .tabset}
+
+### Country
+```{r echo=FALSE}
+data_df<-gpr_country%>%arrange(date)%>%tail(2)%>%gather(variable,value,-date)%>%spread(date,value)
+colnames(data_df)<-c("variable","prev","curr")
+data_df<-data_df%>%mutate(diff=curr-prev)%>%arrange(curr)
+data_df$variable<-factor(data_df$variable,levels=data_df$variable)
+
+p18<-data_df%>% plot_ly()%>%
+     add_bars(y=~variable,x=~round(curr,0),orientation="h",
+              marker=list(color="#ccc",line=list(width=0)))%>%
+     add_annotations(text = ~paste0("<b>","Current GPR by country","</b>"),
+                  x = 0.5,
+                  y = 1.1,
+                  yref = "paper",
+                  xref = "paper",
+                  xanchor = "center",
+                  yanchor = "top",
+                  showarrow = FALSE,
+                  font = list(size = 13))%>%
+     layout(yaxis=list(title="",
+                       showline = T,linecolor="#eee"),
+            xaxis=list(title="",showgrid = F),
+            margin = list(l = 20, r = 10, t = 40, b = 10))%>%
+  config(displayModeBar = F)
+p18
+```
+
+### 1m chg
+```{r echo=FALSE}
+p19<-data_df%>% plot_ly()%>%
+     add_bars(y=~variable,x=~round(diff,0),orientation="h",
+              marker=list(color=~ifelse(diff>0,"#ff9980","#9fdf9f")))%>%
+     add_annotations(text = ~paste0("<b>","GPR - 1m chg","</b>"),
+                  x = 0.5,
+                  y = 1.1,
+                  yref = "paper",
+                  xref = "paper",
+                  xanchor = "center",
+                  yanchor = "top",
+                  showarrow = FALSE,
+                  font = list(size = 13))%>%
+     layout(yaxis=list(title="",
+                       showline = T,linecolor="#eee"),
+            xaxis=list(title="",showgrid = F),
+            margin = list(l = 100, r = 10, t = 40, b = 10))%>%
+    config(displayModeBar = F)
+# 
+# p20<-subplot(p18,p19,margin=0.01,shareY = T)%>%
+#   layout(showlegend=F,
+#          margin= list(l = 150, r = 80, t = 100, b = 80),
+#          yaxis=list(title="",
+#                        showline = T,linecolor="#eee",zerolinecolor="#eee"))
+
+p19
+
+```
+
+
+## Col 2 {data-width=300, .tabset}
+
+### Asia
+```{r echo=FALSE}
+u<-gpr_country%>%filter(date>"2010-01-01")%>%
+  tidyr::gather(variable, value, -date)
+# a$variable<-factor(a$variable,levels=c("France","Germany","Italy","Spain","UK"))
+u1<-u%>%filter(variable %in% c("china","india","indonesia","korea","thailand","malaysia","philipines"))%>%group_by(variable)
+
+
+p21<-u1%>%do(p=my_plot2(.)) %>%
+  subplot(nrows = 3, shareX = F,shareY=F,margin=0.05)%>%
+  layout(showlegend=F,
+         xaxis=list(title="",showticklabels=T,showline=T,linecolor="#eee"),
+         yaxis=list(title="",showticklabels=F,showline=T,linecolor="#eee"),
+         margin = list(l = 20, r = 20, t = 0, b = 20))%>%
+  config(displayModeBar = "hover",
+         modeBarButtonsToRemove=plotly_btr, displaylogo=FALSE,collaborate=FALSE,cloud=FALSE,
+         toImageButtonOptions=list(width=700,height=1100,format="png"))
+
+p21
+```
+
+### EMEA
+```{r echo=FALSE}
+u2<-u%>%filter(variable %in% c("russia","turkey","israel","ukraine","saudi_arabia","south_africa"))%>%group_by(variable)
+
+
+p22<-u2%>%do(p=my_plot2(.)) %>%
+  subplot(nrows = 3, shareX = F,shareY=F,margin=0.05)%>%
+  layout(showlegend=F,
+         xaxis=list(title=""),
+         yaxis=list(title="",showticklabels=F,showline=T,linecolor="#eee"),
+         margin = list(l = 20, r = 20, t = 0, b = 20))%>%
+  config(displayModeBar = "hover",
+         modeBarButtonsToRemove=plotly_btr, displaylogo=FALSE,collaborate=FALSE,cloud=FALSE,
+         toImageButtonOptions=list(width=700,height=1100,format="png"))
+
+p22
+```
+
+### Americas
+```{r echo=FALSE}
+u3<-u%>%filter(variable %in% c("brazil","mexico","argentina","colombia","venezuela"))%>%group_by(variable)
+
+
+u3%>%do(p=my_plot2(.)) %>%
+  subplot(nrows = 3, shareX = F,shareY=F,margin=0.05)%>%
+  layout(showlegend=F,
+         xaxis=list(title=""),
+         yaxis=list(title="",showticklabels=F,showline=T,linecolor="#eee"),
+         margin = list(l = 20, r = 20, t = 0, b = 20))%>%
+  config(displayModeBar = "hover",
+         modeBarButtonsToRemove=plotly_btr, displaylogo=FALSE,collaborate=FALSE,cloud=FALSE,
+         toImageButtonOptions=list(width=700,height=1100,format="png"))
+
+
+```
+
+
+
+
+
+
+WUI {data-icon=fa-map}
+========================================================
+
+## Paramètres {.sidebar data-width=225}
+```{r echo=FALSE}
+
+h3("World Uncertainty Index",style="font-size:30px;color:#3cbcea;font-weight:500;")
+
+# date ------------------------
+div(icon("calendar"),style="font-size:25px;color:#3cbcea;padding-right:10px;padding-bottom:0px;padding-top:30px;")
+h4(paste0("Quarterly, as of ",max(wui$year)),style="color:white;")
+
+
+# info ------------------------
+div(icon("info-circle"),style="font-size:25px;color:#3cbcea;padding-right:10px;padding-bottom:3px;padding-top:30px;")
+h5("Uncertainty index based on the frequency of the word uncertainty and its variant in the Economist Intelligence Unit (EIU) quarterly country reports ",style="color:white;margin-bottom:20px;")
+h5("Ahir, Bloom and Furceri, The World Uncertainty Index, mimeo",style="color:white;margin-bottom:20px;")
+# h5("policyuncertainty.com",style="color:white;margin-bottom:20px;")
+h5("NB: Extreme values adjusted",style="color:white;")
+```
+
+## column 1
+
+### world map {.no-title}
+```{r echo=FALSE}
+
+p23
+
+# orca(p123, "wui_map.svg",width=800,height=500)
+
+```
+
+
+EPU {data-icon="fa-dashboard"}
+=========================================
+
+## Paramètres {.sidebar data-width=225}
+```{r echo=FALSE}
+
+h3("Economic Policy Uncertainty",style="font-size:30px;color:#3cbcea;font-weight:500;")
+
+# date ------------------------
+div(icon("calendar"),style="font-size:25px;color:#3cbcea;padding-right:10px;padding-bottom:0px;padding-top:30px;")
+h4(paste0("Monthly, as of ",max(epu_m$date)),style="color:white;")
+
+
+# info ------------------------
+div(icon("info-circle"),style="font-size:25px;color:#3cbcea;padding-right:10px;padding-bottom:0px;padding-top:30px;")
+h5("Uncertainty measures beased on text analysis and frequency count of main economic newspaper articles that refer to economic policy uncertainty or its variants.",style="color:white;")
+h5("Baker Bloom & Davis (2016)",style="color:white;")
+h5("policyuncertainty.com",style="color:white;")
+```
+
+
+## Column 1 {data-width=300}
+
+### Summary
+```{r echo=FALSE}
+p24<-epu_m%>%filter(date>"2000-01-01")%>%
+  plot_ly(x=~date,y=~gepu_main,name="Global EPU",type="scatter",mode="lines",
+          line=list(color="#4080bf"))%>%
+  add_annotations(text = ~paste0("<b>","Global Economic<br>Policy Uncertainty","</b>"),
+                  x = 0.1,
+                  y = 0.9,
+                  yref = "paper",
+                  xref = "paper",
+                  xanchor = "left",
+                  yanchor = "top",
+                  showarrow = FALSE,
+                  font = list(size = 13))%>%
+  layout(title="",
+         xaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=T,zerolinecolor="#eee", showgrid = F),
+         yaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=T,zerolinecolor="#eee",showgrid = F,
+                    showticklabels = T),
+         margin = list(l = 20, r = 10, t = 0, b = 50))
+
+# orca(p24,"epu.svg",width=800,height=400)
+
+a<-epu_m %>% select(us=us_news,everything(),-gepu_main,-gepu_ppp,-us_3c)%>%
+  gather(variable, value, -date)%>%group_by(variable)%>%arrange(date,variable)%>%
+  mutate(prev=lag(value))%>%filter(date==max(date))%>%mutate(diff=value-prev)%>%arrange(value)
+a$variable<-factor(a$variable,levels=a$variable)
+
+p25<-a%>% plot_ly()%>%
+     add_bars(y=~variable,x=~round(value,0),orientation="h",
+              marker=list(color="#4080bf",line=list(width=0)))%>%
+     add_annotations(text = ~paste0("<b>","Current EPU by country","</b>"),
+                  x = 0.5,
+                  y = 1.1,
+                  yref = "paper",
+                  xref = "paper",
+                  xanchor = "center",
+                  yanchor = "top",
+                  showarrow = FALSE,
+                  font = list(size = 13))%>%
+     layout(yaxis=list(title="",
+                       showline = T,linecolor="#eee"),
+            xaxis=list(title="",showgrid = F),
+            margin = list(l = 20, r = 10, t = 40, b = 10))
+
+
+p26<-a%>% plot_ly()%>%
+     add_bars(y=~variable,x=~round(diff,0),orientation="h",
+              marker=list(color=~ifelse(diff>0,"#ff9980","#9fdf9f")))%>%
+     add_annotations(text = ~paste0("<b>","EPU - 1m chg","</b>"),
+                  x = 0.5,
+                  y = 1.1,
+                  yref = "paper",
+                  xref = "paper",
+                  xanchor = "center",
+                  yanchor = "top",
+                  showarrow = FALSE,
+                  font = list(size = 13))%>%
+     layout(yaxis=list(title="",
+                       showline = T,linecolor="#eee"),
+            xaxis=list(title="",showgrid = F),
+            margin = list(l = 20, r = 10, t = 40, b = 10))
+
+
+
+p27<-subplot(p24,subplot(p25,p26,margin=0.07),nrows=2,margin=0.07,heights=c(0.4,0.6))%>%
+  layout(showlegend=F,
+         margin= list(l = 30, r = 20, t = 20, b = 0))%>%
+  config(displayModeBar = "hover",
+         modeBarButtonsToRemove=plotly_btr, displaylogo=FALSE,collaborate=FALSE,cloud=FALSE,
+         toImageButtonOptions=list(width=700,height=1100,format="png"))
+
+p27
+```
+
+
+## Column 2 {data-width=300}
+
+### Main Areas
+```{r echo=FALSE}
+a<-epu_m %>% select(date,US=us_news,Europe=eu,China=cn)%>%
+  filter(date>"2000-01-01")%>%
+  tidyr::gather(variable, value, -date)
+a$variable<-factor(a$variable,levels=c("US","China","Europe"))
+a<-a%>%group_by(variable)
+
+p28<-a%>%do(p = my_plot1(.)) %>%
+  subplot(nrows = 3, shareX = F,margin=0.02,shareY = F)%>%
+  layout(title="",showlegend=F,
+         xaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=T,zerolinecolor="#eee", showgrid = F),
+         yaxis=list(title="",rangemode="tozero",
+                    showline = T,linecolor="#eee",zeroline=T,zerolinecolor="#eee",showgrid = F,
+                    showticklabels = T),
+         margin = list(l = 5, r = 5, t = 20, b = 20))%>%
+  config(displayModeBar = "hover",
+         modeBarButtonsToRemove=plotly_btr, displaylogo=FALSE,collaborate=FALSE,cloud=FALSE,
+         toImageButtonOptions=list(width=700,height=1100,format="png"))
+p28
+# subplot(p24,p28,heights=c(0.3,0.7),nrows=2)
+
+```
+
+
+
+## Column 2 {data-width=300 .tabset}
+
+
+### Europe
+```{r echo=FALSE}
+a<-epu_m%>%select(date,Germany=de,France=fr,Italy=it,UK=uk,Spain=sp,Greece=gr)%>%filter(date>"2000-01-01")%>%
+  tidyr::gather(variable, value, -date)
+a$variable<-factor(a$variable,levels=c("France","Germany","Italy","Spain","UK","Greece"))
+a<-a%>%group_by(variable)
+
+  
+p29<-a%>%do(p = my_plot2(.)) %>%
+  subplot(nrows = 3, shareX = F,margin=0.05,shareY = F)%>%
+  layout(showlegend=F,
+         xaxis=list(title=""),
+         yaxis=list(title="",showticklabels=F),
+         margin = list(l = 10, r = 10, t = 20, b = 20))%>%
+  config(displayModeBar = F,
+         modeBarButtonsToRemove=plotly_btr, displaylogo=FALSE,collaborate=FALSE,cloud=FALSE,
+         toImageButtonOptions=list(width=700,height=1100,format="png"))
+p29
+```
+
+
+### Asia
+```{r echo=FALSE}
+a<-epu_m%>%select(date,Singapore=sg,Hong_Kong=hk,India="in",Australia=au,South_Korea=sk,Japan=jp)%>%filter(date>"2000-01-01")%>%
+  tidyr::gather(variable, value, -date)
+a<-a%>%group_by(variable)
+
+  
+p30<-a%>%do(p = my_plot2(.)) %>%
+  subplot(nrows = 3, shareX = F,margin=0.05,shareY = F)%>%
+  layout(showlegend=F,
+         xaxis=list(title=""),
+         yaxis=list(title="",showticklabels=F),
+         margin = list(l = 10, r = 10, t = 20, b = 20))%>%
+  config(displayModeBar = F,
+         modeBarButtonsToRemove=plotly_btr, displaylogo=FALSE,collaborate=FALSE,cloud=FALSE,
+         toImageButtonOptions=list(width=700,height=1100,format="png"))
+p30
+```
+
+### others
+```{r echo=FALSE}
+a<-epu_m%>%select(date,Brazil=br,Canada=ca,Mexico=mx,Russia=ru)%>%filter(date>"2000-01-01")%>%
+  tidyr::gather(variable, value, -date)
+# a$variable<-factor(a$variable,levels=c("France","Germany","Italy","Spain","UK"))
+a<-a%>%group_by(variable)
+
+  
+p31<-a%>%do(p = my_plot2(.)) %>%
+  subplot(nrows = 3, shareX = F,margin=0.05,shareY = F)%>%
+  layout(showlegend=F,
+         xaxis=list(title=""),
+         yaxis=list(title="",showticklabels=F),
+         margin = list(l = 10, r = 10, t = 20, b = 20))%>%
+  config(displayModeBar = F,
+         modeBarButtonsToRemove=plotly_btr, displaylogo=FALSE,collaborate=FALSE,cloud=FALSE,
+         toImageButtonOptions=list(width=700,height=1100,format="png"))
+p31
+```
+
+EPU: Topics {data-icon=fa-bars}
+=======================================
+
+## Paramètres {.sidebar data-width=225}
+```{r echo=FALSE}
+
+h3("US: policy uncertainty by topic",style="font-size:30px;color:#3cbcea;font-weight:500;")
+
+# date ------------------------
+div(icon("calendar"),style="font-size:25px;color:#3cbcea;padding-right:10px;padding-bottom:0px;padding-top:30px;")
+h4(paste0("Monthly, as of ",max(epu_us_cat$date)),style="color:white;")
+
+
+# info ------------------------
+div(icon("info-circle"),style="font-size:25px;color:#3cbcea;padding-right:10px;padding-bottom:0px;padding-top:30px;")
+h5("Uncertainty measures beased on text analysis and frequency count of main economic newspaper articles that refer to economic policy uncertainty or its variants.",style="color:white;")
+h5("Baker Bloom & Davis (2016)",style="color:white;")
+h5("policyuncertainty.com",style="color:white;")
+
+
+# data ----------
+cat_data<-epu_us_cat %>% 
+  # select(everything(),-entitlements,-economic,-fin_reg)%>%
+  filter(date>"2000-01-01")%>%
+  tidyr::gather(variable, value, -date)
+
+```
+
+## column 0 {data-width=200}
+
+### topic {.no-title}
+```{r echo=FALSE}
+b<-cat_data%>%group_by(variable)%>%arrange(date,variable)%>%mutate(prev=lag(value))%>%filter(date==max(date))%>%
+  mutate(diff=value-prev)%>%arrange(value)
+b$variable<-factor(b$variable,levels=b$variable)
+
+p32<-b%>%plot_ly(x = ~round(value,0), y = ~variable, type = 'bar', orientation = 'h')%>%
+     layout(title="<b>Current US EPU by policy</br>",
+            titlefont=list(size=13),
+            yaxis=list(title="",
+                       showline = T,linecolor="#eee",zerolinecolor="#eee"),
+            xaxis=list(title="",showgrid = F,zerolinecolor="#eee"),
+            margin = list(l = 100, r = 10, t = 30, b = 20))%>%
+  config(displayModeBar = F,
+         modeBarButtonsToRemove=plotly_btr, displaylogo=FALSE,collaborate=FALSE,cloud=FALSE,
+         toImageButtonOptions=list(width=700,height=1100,format="png"))
+p32
+```
+
+### 1m chg {.no-title}
+```{r echo=FALSE}
+
+p33<-b%>%plot_ly(x = ~round(diff,0), y = ~variable, type = 'bar', orientation = 'h',
+            marker=list(color=~ifelse(diff>0,"#ff9980","#9fdf9f"),
+            line=list(width=0)))%>%
+     layout(title="<b>1M change in EPU</br>",
+            titlefont=list(size=13),
+            yaxis=list(title="",
+                       showline = F,linecolor="#eee",zerolinecolor="#eee"),
+            xaxis=list(title="",showgrid = F,zerolinecolor="#eee"),
+            margin = list(l = 20, r = 10, t = 30, b = 20))%>%
+  config(displayModeBar = F,
+         modeBarButtonsToRemove=plotly_btr, displaylogo=FALSE,collaborate=FALSE,cloud=FALSE,
+         toImageButtonOptions=list(width=700,height=1100,format="png"))
+p33
+```
+
+## column 1 {data-width=800}
+
+### US Policy categories {.no-title}
+```{r echo=FALSE}
+
+cat_data$variable<-factor(cat_data$variable,levels=c("monetary","fiscal","national_security",
+                                          "debt_ccy","govt_spending","regulation",
+                                          "trade","taxes","fin_reg",
+                                          "economic","entitlements","healthcare"))
+p34<-cat_data%>%group_by(variable)%>%do(p = my_plot1(.)) %>%
+  subplot(nrows = 4, shareX = F,margin=0.03,shareY = F)%>%
+  layout(title="",showlegend=F,
+         xaxis=list(title="",
+                    showline = T,linecolor="#eee",zeroline=T,zerolinecolor="#eee", showgrid = F),
+         yaxis=list(title="",rangemode="tozero",
+                    showline = T,linecolor="#eee",zeroline=T,zerolinecolor="#eee",showgrid = F,
+                    showticklabels = T),
+         margin = list(l = 15, r = 10, t = 10, b = 20))%>%
+  config(displayModeBar = "hover",
+         modeBarButtonsToRemove=plotly_btr, displaylogo=FALSE,collaborate=FALSE,cloud=FALSE,
+         toImageButtonOptions=list(width=1200,height=800,format="png"))
+p34
+```
+
+
+EPU: Markets {data-icon="fa-line-chart"}
+========================================================================
+
+## Paramètres {.sidebar data-width=225}
+```{r echo=FALSE}
+
+h3("US EPU and Market Vol",style="font-size:30px;color:#3cbcea;font-weight:500;")
+
+# info ------------------------
+div(icon("info-circle"),style="font-size:30px;color:#3cbcea;padding-right:10px;padding-bottom:3px;padding-top:25px;")
+h4("EPU: Economic Policy Uncertainty",style="color:white;")
+h4("EMU: Equity Market Uncertainty",style="color:white;")
+h4("EMV: Equity Market Volatility",style="color:white;")
+h4("Baker Bloom & Davis (2016)",style="color:white;")
+h4("policyuncertainty.com",style="color:white;")
+```
+
+```{r echo=FALSE}
+### data
+a<-epu_us_d%>%left_join(select(eq_ind_eod,date,vix,spx))%>%
+  # left_join(select(eq_spx_comp_sum,date,vol,avg_range,iqr,mea,skew,exc_kurt))%>%
+  na.locf()
+a<-a%>%mutate(epu_ema3=EMA(daily_policy_index,3),
+              epu_ema5=EMA(daily_policy_index,5),
+              epu_ema10=EMA(daily_policy_index,10),
+              epu_ma100=rollmean(daily_policy_index,100,align = "right",fill = "NA"),
+              epu_vol100=rollapply(daily_policy_index,100,FUN=sd,align = "right",fill = "NA"),
+              epu_vol_ema5=rollapply(epu_ema5,100,FUN=sd,align = "right",fill = "NA"),
+              epu_z_score=(daily_policy_index-epu_ma100)/epu_vol100,
+              epu_zscore_ema=(epu_ema5-epu_ma100)/epu_vol_ema5)%>%
+       mutate(emu_ema3=EMA(daily_equity_index,3),
+              emu_ema5=EMA(daily_equity_index,5),
+              emu_ema10=EMA(daily_equity_index,10),
+              emu_ma100=rollmean(daily_equity_index,100,align = "right",fill = "NA"),
+              emu_vol100=rollapply(daily_equity_index,100,FUN=sd,align = "right",fill = "NA"),
+              emu_vol_ema5=rollapply(emu_ema5,100,FUN=sd,align = "right",fill = "NA"),
+              emu_z_score=(daily_equity_index-emu_ma100)/emu_vol100,
+              emu_zscore_ema=(emu_ema5-emu_ma100)/emu_vol_ema5)%>%  
+    
+  arrange(date)
+
+```
+
+
+## column 1 {data-width=300}
+
+### US - Policy Related Equity Market Vol Index - Monthly
+```{r echo=FALSE}
+
+avg_vix<-eq_ind_eod%>%select(date,vix,spx)%>%arrange(date)%>%
+  mutate(ym=as.yearmon(date))%>%
+  group_by(ym)%>%
+  summarize(date=max(as.Date(ym,frac=1)),
+  vix_avg=mean(vix, na.rm=TRUE),
+  vix_max=max(vix,na.rm=TRUE),
+  vix_min=min(vix,na.rm=TRUE),
+  spx_min=min(spx,na.rm=TRUE),
+  spx_max=max(spx,na.rm=TRUE),
+  spx_avg=mean(spx, na.rm=TRUE))
+  
+z<-epu_us_market_m%>%left_join(avg_vix)%>%
+  left_join(select(epu_m,date,us_news,us_3c))%>%
+  select(date,Policy_Related_EMV=pr_emv_ind,US_epu=us_news,us_3c,
+         vix_avg,vix_max,vix_min,
+         spx_avg,spx_min,spx_max)%>%
+  filter(date>"2000-01-01")
+
+z1<- z %>% select(date,US_epu,Policy_Related_EMV)%>%filter(date>"2000-01-01")%>%
+  tidyr::gather(variable, value, -date)
+z1$variable<-factor(z1$variable,levels=c("US_epu","Policy_Related_EMV"))
+z1<-z1 %>% group_by(variable)
+
+
+p35<- z1 %>% do(p = my_plot(.)) %>%
+  subplot(nrows = 2, shareX = TRUE,margin=0.03,shareY = F)%>%
+  layout(showlegend=F,
+         xaxis=list(title=""),
+         yaxis=list(title=""),
+           margin = list(l = 30, r = 15, t = 0, b = 0))
+
+
+p36<-z%>%
+  plot_ly(x=~date,y=~vix_max,type="scatter",mode="lines",line=list(color="transparent"))%>%
+    add_lines(y=~vix_min,type="scatter",mode="lines",fill="tonexty",fillcolor="lightgrey",
+              line=list(color="transparent"))%>%
+    add_lines(y=~vix_avg,type="scatter",mode="lines",line=list(color="#808080",width=1.5))%>%
+    add_annotations(
+              text = ~paste0("<b>","VIX avg, min, max","</b>"),
+              x = 0.1,
+              y = 0.85,
+              yref = "paper",
+              xref = "paper",
+              xanchor = "left",
+              yanchor = "top",
+              showarrow = FALSE,
+              font = list(size = 13))%>%
+    layout(title="",
+           showlegend=F,
+           xaxis=list(title=""),
+           yaxis=list(title=""),
+           yaxis2=list(title="",overlaying="y",side="right"),
+           margin = list(l = 30, r = 15, t = 0, b = 0))
+
+p37<-subplot(p35,p36,nrows=2,shareX = T,margin=0.03,heights=c(0.6,0.4))%>%
+  config(displayModeBar = F,
+         modeBarButtonsToRemove=plotly_btr, displaylogo=FALSE,collaborate=FALSE,cloud=FALSE,
+         toImageButtonOptions=list(width=1200,height=800,format="png"))
+p37
+
+```
+
+
+## Column 2 {data-width=300 .tabset}
+
+### Daily EPU-EMU
+```{r echo=FALSE}
+
+b<-a%>% select(date,EPU_daily=daily_policy_index,EMU_daily=daily_equity_index)%>%filter(date>"2016-01-01")%>%
+  gather(variable, value, -date)
+  b$variable<-factor(b$variable,levels=c("EPU_daily","EMU_daily"))
+b<-b%>%group_by(variable)
+  
+p38<-b%>%do(p = my_plot(.)) %>%
+  subplot(nrows = 2, shareX = TRUE,margin=0.03,shareY = F)%>%
+  layout(showlegend=F,
+         xaxis=list(title=""),
+         yaxis=list(title=""),
+         margin = list(l = 30, r = 15, t = 0, b = 0))
+
+p39<-a%>%filter(date>"2016-01-01")%>%
+  plot_ly(x=~date,y=~vix,type="scatter",mode="lines",line=list(color="#808080",width=1.5))%>%
+  # add_lines(y=~spx,yaxis="y2",line=list(color="red"))%>%
+    add_annotations(
+              text = ~paste0("<b>","VIX","</b>"),
+              x = 0.1,
+              y = 0.85,
+              yref = "paper",
+              xref = "paper",
+              xanchor = "left",
+              yanchor = "top",
+              showarrow = FALSE,
+              font = list(size = 13))%>%
+    layout(title="",
+           showlegend=F,
+           xaxis=list(title=""),
+           yaxis=list(title=""),
+           yaxis2=list(title="",overlaying="y",side="right"),
+           margin = list(l = 30, r = 15, t = 0, b = 0))
+
+p40<-subplot(p38,p39,nrows=2,shareX = T,margin=0.03,heights=c(0.6,0.4))%>%
+  layout(yaxis4=list(title="",overlaying="y3",side="right"))%>%
+  config(displayModeBar = F,
+         modeBarButtonsToRemove=plotly_btr, displaylogo=FALSE,collaborate=FALSE,cloud=FALSE,
+         toImageButtonOptions=list(width=1200,height=800,format="png"))
+
+p40
+```
+
+### EPU/EMU - EMA5
+```{r echo=FALSE}
+
+b<-a%>% select(date,emu_ema5,epu_ema5)%>%filter(date>"2016-01-01")%>%
+  gather(variable, value, -date)
+  b$variable<-factor(b$variable,levels=c("epu_ema5","emu_ema5"))
+b<-b%>%group_by(variable)
+  
+p41<-b%>%do(p = my_plot(.)) %>%
+  subplot(nrows = 2, shareX = TRUE,margin=0.03,shareY = F)%>%
+  layout(showlegend=F,
+         xaxis=list(title=""),
+         yaxis=list(title=""),
+           margin = list(l = 30, r = 15, t = 0, b = 0))
+
+p42<-subplot(p41,p39,nrows=2,shareX = T,margin=0.03,heights=c(0.6,0.4))%>%
+  layout(yaxis4=list(title="",overlaying="y3",side="right"))%>%
+  config(displayModeBar = F,
+         modeBarButtonsToRemove=plotly_btr, displaylogo=FALSE,collaborate=FALSE,cloud=FALSE,
+         toImageButtonOptions=list(width=1200,height=800,format="png"))
+p42
+
+```
+
+
+## column 3 {data-width=100}
+
+### VB
+```{r echo=FALSE}
+val<-epu_us_d$daily_policy_index[nrow(epu_us_d)]
+valueBox(val,
+         caption = "Current daily US_EPU",
+         color=ifelse(val>200,"danger",ifelse(val>150,"warning","#3cbcea")))
+```
+
+### VB
+```{r echo=FALSE}
+val<-round(a$epu_zscore_ema[nrow(a)],2)
+valueBox(val,
+         caption = paste0("The EPU-5days EMA is ",val ," standard deviations above (below) its 100 day average"),
+         color=ifelse(val>2,"danger",ifelse(val>1.5,"warning","#3cbcea")))
+```
+
+### VB
+```{r echo=FALSE}
+val<-epu_us_d$daily_equity_index[nrow(epu_us_d)]
+valueBox(val,
+         caption = "Current daily US_EMU",
+         color=ifelse(val>200,"danger",ifelse(val>150,"warning","#3cbcea")))
+```
+
+### VB
+```{r echo=FALSE}
+val<-round(a$emu_zscore_ema[nrow(a)],2)
+valueBox(val,
+         caption = paste0("The EMU-5days EMA is ",val ," standard deviations above (below) its 100 day average"),
+         color=ifelse(val>2,"danger",ifelse(val>1.5,"warning","#3cbcea")))
+```
+
+
+
+<!-- Gold {data-icon="fa-money"} -->
+<!-- ======================================================================== -->
+
+<!-- ## Paramètres {.sidebar data-width=225} -->
+<!-- ```{r echo=FALSE} -->
+
+<!-- h3("Gold and PolRisk",style="font-size:30px;color:#3cbcea;font-weight:500;") -->
+
+<!-- # info ------------------------ -->
+<!-- div(icon("info-circle"),style="font-size:30px;color:#3cbcea;padding-right:10px;padding-bottom:3px;padding-top:25px;") -->
+<!-- h4("EPU: Economic Policy Uncertainty",style="color:white;") -->
+<!-- h4("EMU: Equity Market Uncertainty",style="color:white;") -->
+<!-- h4("EMV: Equity Market Volatility",style="color:white;") -->
+<!-- h4("Baker Bloom & Davis (2016)",style="color:white;") -->
+<!-- h4("policyuncertainty.com",style="color:white;") -->
+<!-- ``` -->
+
+
+<!-- ## col1 {data-width=500} -->
+
+<!-- ### EPU and gold {data-height=200} -->
+<!-- ```{r echo=FALSE} -->
+
+<!-- commo_eod%>% -->
+<!--   plot_ly(x=~date,y=~gold,name="gold",type="scatter",mode="lines", -->
+<!--           line=list(color="#4080bf",width=1.5))%>% -->
+<!--   add_annotations(text = ~paste0("<b>","Gold price","</b>"), -->
+<!--                   x = 0.1, -->
+<!--                   y = 0.9, -->
+<!--                   yref = "paper", -->
+<!--                   xref = "paper", -->
+<!--                   xanchor = "left", -->
+<!--                   yanchor = "top", -->
+<!--                   showarrow = FALSE, -->
+<!--                   font = list(size = 12))%>% -->
+<!--   layout(title="", -->
+<!--          xaxis=list(title="", -->
+<!--                     showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee", showgrid = F), -->
+<!--          yaxis=list(title="", -->
+<!--                     showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee",showgrid = F, -->
+<!--                     showticklabels = T), -->
+<!--          margin = list(l = 5, r = 5, t = 0, b = 0), -->
+<!--          height=250)%>% -->
+<!--   config(displayModeBar=F) -->
+
+<!-- ``` -->
+
+
+<!-- ### gold monthly  {data-height=300} -->
+<!-- ```{r echo=FALSE} -->
+
+<!-- a<-commo_eod%>%select(date,gold)%>%na.locf()%>% -->
+<!--   mutate(ym=as.yearmon(date))%>%group_by(ym)%>% -->
+<!--   filter(date==max(date))%>% -->
+<!--     mutate(date=as.Date(ym,frac=1))%>% -->
+<!--     ungroup()%>% -->
+<!--       mutate(gold_perf=100*round(gold/lag(gold,1)-1,3)) -->
+
+<!-- b<-commo_eod%>%select(date,gold)%>%na.locf()%>% -->
+<!--   mutate(ym=as.yearmon(date))%>%group_by(ym)%>% -->
+<!--   summarize(avg_gold=mean(gold,na.rm=TRUE))%>% -->
+<!--     ungroup()%>% -->
+<!--       mutate(gold_avg_perf=100*round(avg_gold/lag(avg_gold,1)-1,3)) -->
+
+<!-- a<-a%>%left_join(b) -->
+
+<!-- a%>% plot_ly(x=~date,y=~gold_avg_perf,name="gold",type="bar")%>% -->
+<!--   add_annotations(text = ~paste0("<b>","Gold price","</b>"), -->
+<!--                   x = 0.1, -->
+<!--                   y = 0.9, -->
+<!--                   yref = "paper", -->
+<!--                   xref = "paper", -->
+<!--                   xanchor = "left", -->
+<!--                   yanchor = "top", -->
+<!--                   showarrow = FALSE, -->
+<!--                   font = list(size = 12))%>% -->
+<!--   layout(title="", -->
+<!--          xaxis=list(title="", -->
+<!--                     showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee", showgrid = F), -->
+<!--          yaxis=list(title="", -->
+<!--                     showline = T,linecolor="#eee",zeroline=F,zerolinecolor="#eee",showgrid = F, -->
+<!--                     showticklabels = T), -->
+<!--          margin = list(l = 5, r = 5, t = 0, b = 0), -->
+<!--          height=250)%>% -->
+<!--   config(displayModeBar=F) -->
+
+
+
+
+<!-- ``` -->
+
+
+<!-- ## col2 {data-width=500} -->
+
+
